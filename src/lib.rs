@@ -1,34 +1,21 @@
+pub mod fetch;
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::Command;
 
+use crate::fetch::unsplash::Photos;
 use serde::Deserialize;
 
-const UNSPLASH_ENDPOINT: &str = "https://api.unsplash.com/collections/1053828/photos/?client_id=";
 const API_KEYS_FILE: &str = "api_keys.yml";
 
 const WALLPAPERS_DEFAULT_STORAGE: &str = "/home/abudziak/.blisspaper/wallpapers";
 
 #[derive(Deserialize, Debug)]
 pub struct ApiKeys {
-    unsplash_client_id: String,
+    pub unsplash_client_id: String,
 }
-
-#[derive(Deserialize, Debug)]
-pub struct PhotoSizes {
-    pub raw: Option<String>,
-    pub full: Option<String>,
-    pub regular: Option<String>,
-    pub small: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct PhotoMeta {
-    pub urls: PhotoSizes,
-}
-
-pub type Photos = Vec<PhotoMeta>;
 
 pub fn set_wallpaper(wallpaper_path: &str) {
     let output = Command::new("gsettings")
@@ -64,16 +51,6 @@ pub fn load_api_keys() -> ApiKeys {
 
     let content = std::fs::read_to_string(path).unwrap();
     serde_yaml::from_str(&content).expect("Invalid api_keys.yml")
-}
-
-pub fn load_unsplash_photos(
-    client: &reqwest::Client,
-    api_keys: &ApiKeys,
-) -> reqwest::Result<Photos> {
-    let mut res = client
-        .get(&(UNSPLASH_ENDPOINT.to_owned() + &api_keys.unsplash_client_id))
-        .send()?;
-    res.json()
 }
 
 pub fn default_wallpaper_path(filename: &str) -> String {

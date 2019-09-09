@@ -1,23 +1,27 @@
 use blisspaper::{
     create_wallpaper_storage_if_not_exists, default_wallpaper_path, load_api_keys,
-    load_unsplash_photos, save_wallpaper_from_response, set_screensaver, set_wallpaper, Photos,
+    save_wallpaper_from_response, set_screensaver, set_wallpaper,
 };
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
+use flexi_logger::LogSpecification;
+use log::{info, LevelFilter};
+use blisspaper::fetch::unsplash;
 
-fn main() -> Result<(), reqwest::Error> {
+fn main() -> reqwest::Result<()> {
+    let log_spec = LogSpecification::default(LevelFilter::Info).build();
+    flexi_logger::Logger::with(log_spec).start().unwrap();
     let api_keys = load_api_keys();
     if create_wallpaper_storage_if_not_exists() {
-        println!("Wallpaper directory didn't exist. Created a new one..");
+        info!("Wallpaper directory didn't exist. Created a new one..");
     } else {
-        println!("Found existing wallpaper directory.");
+        info!("Found existing wallpaper directory.");
     }
     let client = reqwest::Client::new();
-    let photos = load_unsplash_photos(&client, &api_keys)?;
+    let photos = unsplash::CollectionEndpoint::new(1053828)
+        .with_client_id(api_keys.unsplash_client_id.clone())
+        .fetch_photos(&client)?;
 
     if photos.is_empty() {
-        println!("No photos downloaded");
+        info!("No photos downloaded");
         return Ok(());
     }
 
