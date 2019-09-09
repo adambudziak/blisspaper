@@ -1,19 +1,20 @@
-use blisspaper::{
-    create_wallpaper_storage_if_not_exists, default_wallpaper_path, load_api_keys,
-    save_wallpaper_from_response, set_screensaver, set_wallpaper,
-};
+use blisspaper::fetch::unsplash;
+use blisspaper::store::{Store, StoreError};
+use blisspaper::{load_api_keys, wallpaper};
+use blisspaper::bliss::Bliss;
 use flexi_logger::LogSpecification;
 use log::{info, LevelFilter};
-use blisspaper::fetch::unsplash;
+use blisspaper::wallpaper::{Wallpaper, Screensaver};
 
 fn main() -> reqwest::Result<()> {
     let log_spec = LogSpecification::default(LevelFilter::Info).build();
     flexi_logger::Logger::with(log_spec).start().unwrap();
     let api_keys = load_api_keys();
-    if create_wallpaper_storage_if_not_exists() {
-        info!("Wallpaper directory didn't exist. Created a new one..");
+    let store = Store::default();
+    if store.create_dir() {
+        info!("Wallpaper directory didn't exist, created a new one.");
     } else {
-        info!("Found existing wallpaper directory.");
+        info!("Found an existing wallpaper directory.");
     }
     let client = reqwest::Client::new();
     let photos = unsplash::CollectionEndpoint::new(1053828)
@@ -25,14 +26,9 @@ fn main() -> reqwest::Result<()> {
         return Ok(());
     }
 
-    let first_photo_url = photos.as_slice()[0].urls.raw.as_ref().unwrap();
-    let mut photo = client.get(first_photo_url).send()?;
-
-    let wallpaper_path = default_wallpaper_path("wallpaper.jpg");
-    save_wallpaper_from_response(&wallpaper_path, &mut photo)?;
-
-    set_wallpaper(&wallpaper_path);
-    set_screensaver(&wallpaper_path);
+    let manager = wallpaper::gnome::Manager;
+    let mut bliss = Bliss::new(manager, store, photos.into());
+    bliss.run();
 
     Ok(())
 }

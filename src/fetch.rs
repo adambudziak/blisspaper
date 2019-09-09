@@ -1,4 +1,18 @@
+use reqwest::{Url, Response};
+
+pub struct PhotoSource {
+    pub urls: Vec<Url>,
+}
+
+impl PhotoSource {
+    pub fn download(&self, client: &reqwest::Client, url: &Url) -> reqwest::Result<Response> {
+        client.get(url.as_str()).send()
+    }
+}
+
 pub mod unsplash {
+    use crate::fetch::PhotoSource;
+    use reqwest::Url;
     use serde::Deserialize;
 
     const COLLECTIONS: &str = "https://api.unsplash.com/collections";
@@ -47,6 +61,17 @@ pub mod unsplash {
 
         pub fn fetch_photos(&self, client: &reqwest::Client) -> reqwest::Result<Photos> {
             client.get(self.get_url().as_str()).send()?.json()
+        }
+    }
+
+    impl Into<PhotoSource> for Photos {
+        fn into(self) -> PhotoSource {
+            let urls = self
+                .into_iter()
+                .filter_map(|p| p.urls.raw)
+                .map(|url| Url::parse(&url).unwrap())
+                .collect();
+            PhotoSource { urls }
         }
     }
 
