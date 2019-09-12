@@ -38,7 +38,7 @@ pub mod unsplash {
     }
 
     impl CollectionEndpoint {
-        pub fn new(collection_id: u64) -> Self {
+        pub fn new(collection_id: u128) -> Self {
             Self {
                 url: format!("{}/{}/photos/", COLLECTIONS, collection_id),
                 client_id: None,

@@ -5,6 +5,7 @@ pub mod fetch;
 pub mod store;
 pub mod wallpaper;
 pub mod bliss;
+pub mod config;
 
 use std::path::Path;
 
@@ -17,18 +18,12 @@ pub struct ApiKeys {
     pub unsplash_client_id: String,
 }
 
-pub fn load_api_keys() -> ApiKeys {
-    let path = Path::new(API_KEYS_FILE);
-    assert!(path.exists(), "api_keys.yml file does not exist! Quitting");
+impl ApiKeys {
+    pub fn load() -> Self {
+        let path = Path::new(API_KEYS_FILE);
+        assert!(path.exists(), "api_keys.yml file does not exist! Quitting");
 
-    let content = std::fs::read_to_string(path).unwrap();
-    serde_yaml::from_str(&content).expect("Invalid api_keys.yml")
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+        let content = std::fs::read_to_string(path).unwrap();
+        serde_yaml::from_str(&content).expect("Invalid api_keys.yml")
     }
 }
