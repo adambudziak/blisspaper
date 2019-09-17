@@ -37,13 +37,16 @@ impl Store {
 
     pub fn get_filepath(&self, url: &reqwest::Url) -> PathBuf {
         // TODO detect the extension
-        let filename = base64::encode(url.as_str()) + ".jpg";
+        let filename = base64::encode(url.as_str())
+            .replace("/", "_") + ".jpg";
         self.store_path.join(filename)
     }
 
     pub fn save_wallpaper(&self, response: &mut reqwest::Response) -> Result<String, StoreError> {
         let filepath = self.get_filepath(response.url());
         let filepath_str = filepath.to_str().unwrap().to_owned();
+
+        info!("Saving image from {} to {}", response.url().as_str(), filepath_str);
         if filepath.exists() {
             return Err(StoreError::WallpaperAlreadyExists(filepath_str))
         }

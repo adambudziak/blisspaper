@@ -42,25 +42,31 @@ pub mod unsplash {
         }
 
         pub fn set_client_id(mut self, client_id: String) -> Self {
-            self.url.query_pairs_mut()
-                .append_pair("client_id", &client_id);
             self.client_id = Some(client_id);
             self
         }
 
-        pub fn set_page(mut self, page: usize) -> Self {
-            self.url.query_pairs_mut()
-                .append_pair("page", &page.to_string());
-            self.current_page = page;
+        pub fn with_page(mut self, page: usize) -> Self {
+            self.set_page(page);
             self
         }
 
-        pub fn get_url(&self) -> &str {
-            self.url.as_str()
+        pub fn set_page(&mut self, page: usize) {
+            self.current_page = page;
+        }
+
+        pub fn get_url(&self) -> String {
+            let mut url = self.url.clone();
+            url.query_pairs_mut()
+                .append_pair("page", self.current_page.to_string().as_ref());
+            if let Some(client_id) = &self.client_id {
+                url.query_pairs_mut().append_pair("client_id", &client_id);
+            }
+            url.as_str().to_owned()
         }
 
         pub fn fetch_photos(&self, client: &reqwest::Client) -> reqwest::Result<Photos> {
-            client.get(self.get_url()).send()?.json()
+            client.get(self.get_url().as_str()).send()?.json()
         }
     }
 
@@ -86,16 +92,17 @@ pub mod unsplash {
         type Item = Photos;
 
         fn next(&mut self) -> Option<Self::Item> {
+            info!("Fetching new page: {}", self.endpoint.get_url());
             let client = reqwest::Client::new();
             let photos = self.endpoint.fetch_photos(&client);
             match photos {
                 // TODO error handling should be improved
                 Ok(photos) => {
-                    self.current_page += 1;
+                    self.endpoint.set_page(self.endpoint.current_page + 1);
                     if photos.len() == 0 { None } else { Some(photos) }
                 },
                 Err(e) => {
-                    error!("Unsplash collection endpoint iter error: {}", e);
+                    error!("Failed to fetch next page, reason: {}", e);
                     None
                 }
             }
@@ -128,10 +135,10 @@ pub mod unsplash {
         fn test_collection_endpoint() {
             let endpoint = CollectionEndpoint::new(1234);
             let expected_url = format!("{}/{}/photos/", COLLECTIONS_BASE_URL, 1234);
-            assert_eq!(endpoint.get_url(), &expected_url);
+            assert_eq!(endpoint.get_url(), expected_url);
             let endpoint = endpoint.set_client_id("myid".to_owned());
             let expected_url = format!("{}?client_id=myid", expected_url);
-            assert_eq!(endpoint.get_url(), &expected_url);
+            assert_eq!(endpoint.get_url(), expected_url);
         }
     }
 }

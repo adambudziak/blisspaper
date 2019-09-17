@@ -21,13 +21,12 @@ fn main() -> reqwest::Result<()> {
         info!("Found an existing wallpaper directory.");
     }
 
-    let client = reqwest::Client::new();
-
     let endpoint = unsplash::CollectionEndpoint::new(config.collections[0])
-        .set_client_id(api_keys.unsplash_client_id.clone());
+        .set_client_id(api_keys.unsplash_client_id.clone())
+        .with_page(1);
 
 
-    let manager = wallpaper::gnome::Manager;
+    let manager = wallpaper::i3::Manager;
     let mut bliss = Bliss::new(manager, store, endpoint)
         .set_changerate(config.changerate);
     bliss.run();
