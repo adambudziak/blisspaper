@@ -1,21 +1,11 @@
 use reqwest::{Url, Response};
-
-pub struct PhotoSource {
-    pub urls: Vec<Url>,
-}
-
-impl PhotoSource {
-    pub fn download(&self, client: &reqwest::Client, url: &Url) -> reqwest::Result<Response> {
-        client.get(url.as_str()).send()
-    }
-}
+use log::error;
 
 pub mod unsplash {
-    use crate::fetch::PhotoSource;
     use reqwest::Url;
     use serde::Deserialize;
 
-    const COLLECTIONS: &str = "https://api.unsplash.com/collections";
+    const COLLECTIONS_BASE_URL: &str = "https://api.unsplash.com/collections";
 
     #[derive(Deserialize, Debug)]
     pub struct PhotoSizes {
@@ -32,48 +22,103 @@ pub mod unsplash {
 
     pub type Photos = Vec<PhotoMeta>;
 
+    #[derive(Clone)]
     pub struct CollectionEndpoint {
-        url: String,
+        url: Url,
         client_id: Option<String>,
+        current_page: usize,
     }
 
     impl CollectionEndpoint {
+
         pub fn new(collection_id: u128) -> Self {
+            let url = Url::parse(&format!("{}/{}/photos/", COLLECTIONS_BASE_URL, collection_id))
+                .unwrap();
             Self {
-                url: format!("{}/{}/photos/", COLLECTIONS, collection_id),
+                url,
                 client_id: None,
+                current_page: 1,
             }
         }
 
-        pub fn with_client_id(self, client_id: String) -> Self {
-            Self {
-                url: self.url,
-                client_id: Some(client_id),
-            }
+        pub fn set_client_id(mut self, client_id: String) -> Self {
+            self.url.query_pairs_mut()
+                .append_pair("client_id", &client_id);
+            self.client_id = Some(client_id);
+            self
         }
 
-        pub fn get_url(&self) -> String {
-            match &self.client_id {
-                Some(c_id) => format!("{}?client_id={}", self.url, c_id),
-                None => self.url.clone(),
-            }
+        pub fn set_page(mut self, page: usize) -> Self {
+            self.url.query_pairs_mut()
+                .append_pair("page", &page.to_string());
+            self.current_page = page;
+            self
+        }
+
+        pub fn get_url(&self) -> &str {
+            self.url.as_str()
         }
 
         pub fn fetch_photos(&self, client: &reqwest::Client) -> reqwest::Result<Photos> {
-            client.get(self.get_url().as_str()).send()?.json()
+            client.get(self.get_url()).send()?.json()
         }
     }
 
-    impl Into<PhotoSource> for Photos {
-        fn into(self) -> PhotoSource {
-            let urls = self
-                .into_iter()
-                .filter_map(|p| p.urls.raw)
-                .map(|url| Url::parse(&url).unwrap())
-                .collect();
-            PhotoSource { urls }
+    pub struct PagesIterator {
+        endpoint: CollectionEndpoint,
+        current_page: usize,
+    }
+
+    impl IntoIterator for CollectionEndpoint {
+        type Item = Photos;
+        type IntoIter = PagesIterator;
+
+        fn into_iter(self) -> Self::IntoIter {
+            let current_page = self.current_page;
+            PagesIterator {
+                endpoint: self,
+                current_page
+            }
         }
     }
+
+    impl Iterator for PagesIterator {
+        type Item = Photos;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let client = reqwest::Client::new();
+            let photos = self.endpoint.fetch_photos(&client);
+            match photos {
+                // TODO error handling should be improved
+                Ok(photos) => {
+                    self.current_page += 1;
+                    if photos.len() == 0 { None } else { Some(photos) }
+                },
+                Err(e) => {
+                    error!("Unsplash collection endpoint iter error: {}", e);
+                    None
+                }
+            }
+        }
+    }
+
+    #[derive(new)]
+    pub struct PhotoSource {
+        pages_iterator: PagesIterator,
+    }
+
+    impl IntoIterator for PhotoSource {
+        type Item = Url;
+        type IntoIter = impl Iterator<Item = Url>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.pages_iterator
+                .flat_map(|p| p.into_iter())
+                .filter_map(|p| p.urls.raw)
+                .map(|url| Url::parse(&url).unwrap())
+        }
+    }
+
 
     #[cfg(test)]
     mod tests {
@@ -82,11 +127,11 @@ pub mod unsplash {
         #[test]
         fn test_collection_endpoint() {
             let endpoint = CollectionEndpoint::new(1234);
-            let expected_url = format!("{}/{}/photos/", COLLECTIONS, 1234);
-            assert_eq!(endpoint.get_url(), expected_url);
-            let endpoint = endpoint.with_client_id("myid".to_owned());
+            let expected_url = format!("{}/{}/photos/", COLLECTIONS_BASE_URL, 1234);
+            assert_eq!(endpoint.get_url(), &expected_url);
+            let endpoint = endpoint.set_client_id("myid".to_owned());
             let expected_url = format!("{}?client_id=myid", expected_url);
-            assert_eq!(endpoint.get_url(), expected_url);
+            assert_eq!(endpoint.get_url(), &expected_url);
         }
     }
 }

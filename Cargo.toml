@@ -14,3 +14,4 @@ log = "0.4"
 flexi_logger = "0.14"
 base64 = "0.10"
 derive-new = "0.5"
+futures-preview = { "version" = "=0.3.0-alpha.18", features = ["async-await", "nightly"] }

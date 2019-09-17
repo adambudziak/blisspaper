@@ -1,40 +1,59 @@
+use std::fs::read_dir;
+use log::{info, warn, error};
+
 use crate::wallpaper::{Screensaver, Wallpaper};
-use crate::store::Store;
-use crate::fetch::PhotoSource;
+use crate::store::{Store, StoreError};
+use crate::fetch::unsplash::{PhotoSource, CollectionEndpoint};
 
 pub struct Bliss<M: Wallpaper + Screensaver> {
     manager: M,
     store: Store,
-    source: PhotoSource,
+    endpoint: CollectionEndpoint,
     changerate: u64,
 }
 
 impl<M: Wallpaper + Screensaver> Bliss<M> {
-    pub fn new(manager: M, store: Store, source: PhotoSource) -> Self {
-        Self { manager, store, source, changerate: 5 }
+    pub fn new(manager: M, store: Store, endpoint: CollectionEndpoint) -> Self {
+        Self { manager, store, endpoint, changerate: 5 }
     }
 
     pub fn run(&mut self) {
         let sleep_duration = std::time::Duration::from_secs(self.changerate);
         let client = reqwest::Client::new();
-        let photos = self.source.urls.iter().cycle();
 
-        for photo in photos {
-
-            let path = if !self.store.contains(photo) {
-                let mut response = self.source.download(&client, photo).unwrap();
-                let save_result = self.store.save_wallpaper(&mut response);
-                match save_result {
-                    Ok(path) => path,
-                    Err(e) => panic!("{:?}", e)
+        loop {
+            let photo_source = PhotoSource::new(self.endpoint.clone().into_iter());
+            for photo_url in photo_source.into_iter() {
+                let mut response = client.get(photo_url.as_str()).send().unwrap();
+                // TODO add error handling as soon as store is capable of returning
+                //      something useful
+//                match self.store.save_wallpaper(&mut response) {
+//                    Ok(p) | Err(StoreError::WallpaperAlreadyExists(p)) => (),
+//                    Err(e) => {
+//
+//                    }
+//                }
+                if let Err(e) = self.store.save_wallpaper(&mut response) {
+                    warn!("Couldn't save the wallpaper from {} in the store. Reason: {:?}", photo_url, e)
                 }
-            } else {
-                self.store.get_filepath(photo).to_str().unwrap().to_owned()
-            };
 
-            self.manager.set_wallpaper(&path);
-            self.manager.set_screensaver(&path);
-            std::thread::sleep(sleep_duration);
+
+                let wallpapers = self.store.iter_wallpapers().unwrap();
+                for wallpaper in wallpapers {
+
+                    if let Err(e) = wallpaper {
+                        error!("Couldn't get the wallpaper from the store, reason: {}", e);
+                        continue
+                    }
+
+                    let path = wallpaper.unwrap().path().to_str().unwrap().to_owned();
+
+                    self.manager.set_wallpaper(&path);
+                    self.manager.set_screensaver(&path);
+
+                    std::thread::sleep(sleep_duration);
+                }
+            }
         }
     }
 

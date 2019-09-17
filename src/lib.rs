@@ -1,5 +1,10 @@
+#![feature(type_alias_impl_trait)]
+
 #[macro_use]
 extern crate derive_new;
+
+#[macro_use]
+extern crate log;
 
 pub mod fetch;
 pub mod store;

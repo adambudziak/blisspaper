@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, ReadDir, read_dir};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
@@ -6,7 +6,7 @@ const WALLPAPERS_DEFAULT_STORAGE: &str = ".blisspaper/wallpapers";
 
 #[derive(Debug)]
 pub enum StoreError {
-    WallpaperAlreadyExists(String)
+    WallpaperAlreadyExists(String),
 }
 
 #[derive(Debug)]
@@ -50,5 +50,9 @@ impl Store {
         let mut writer = BufWriter::new(File::create(&filepath).unwrap());
         response.copy_to(&mut writer).unwrap();
         Ok(filepath_str)
+    }
+
+    pub fn iter_wallpapers(&self) -> std::io::Result<ReadDir> {
+        read_dir(&self.store_path)
     }
 }

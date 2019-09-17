@@ -22,17 +22,13 @@ fn main() -> reqwest::Result<()> {
     }
 
     let client = reqwest::Client::new();
-    let photos = unsplash::CollectionEndpoint::new(config.collections[0])
-        .with_client_id(api_keys.unsplash_client_id.clone())
-        .fetch_photos(&client)?;
 
-    if photos.is_empty() {
-        info!("No photos downloaded");
-        return Ok(());
-    }
+    let endpoint = unsplash::CollectionEndpoint::new(config.collections[0])
+        .set_client_id(api_keys.unsplash_client_id.clone());
+
 
     let manager = wallpaper::gnome::Manager;
-    let mut bliss = Bliss::new(manager, store, photos.into())
+    let mut bliss = Bliss::new(manager, store, endpoint)
         .set_changerate(config.changerate);
     bliss.run();
 
