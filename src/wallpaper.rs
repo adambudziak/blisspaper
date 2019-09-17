@@ -58,3 +58,43 @@ pub mod i3 {
         }
     }
 }
+
+pub mod dummy {
+    use crate::wallpaper::{ Wallpaper, Screensaver};
+
+    pub struct Manager;
+
+    impl Wallpaper for Manager {
+        fn set_wallpaper(&self, path: &str) -> Result<(), ()> {
+            Ok(())
+        }
+    }
+
+    impl Screensaver for Manager {
+        fn set_screensaver(&self, path: &str) -> Result<(), ()> {
+            Ok(())
+        }
+    }
+}
+
+pub trait WallpaperAndScreensaver: Wallpaper + Screensaver {}
+impl<T> WallpaperAndScreensaver for T where T: Wallpaper + Screensaver {}
+
+pub fn detect_session() -> Box<dyn WallpaperAndScreensaver> {
+    let session = env!("DESKTOP_SESSION").to_string().to_lowercase();
+
+    match env!("DESKTOP_SESSION") {
+        "i3" => {
+            info!("Detected i3 session");
+            Box::new(i3::Manager)
+        },
+        "gnome" => {
+            info!("Detected gnome session");
+            Box::new(gnome::Manager)
+        },
+        _ => {
+            error!("Dummy wallpaper manager is being used. Session was not identified properly.");
+            Box::new(dummy::Manager)
+        }
+    }
+}

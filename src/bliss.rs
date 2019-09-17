@@ -1,20 +1,20 @@
 use std::fs::{read_dir, DirEntry};
 use log::{info, warn, error};
 
-use crate::wallpaper::{Screensaver, Wallpaper};
+use crate::wallpaper::{Screensaver, Wallpaper, WallpaperAndScreensaver};
 use crate::store::{Store, StoreError};
 use crate::fetch::unsplash::{PhotoSource, CollectionEndpoint};
 use reqwest::Url;
 
-pub struct Bliss<M: Wallpaper + Screensaver> {
-    manager: M,
+pub struct Bliss {
+    manager: Box<dyn WallpaperAndScreensaver>,
     store: Store,
     endpoint: CollectionEndpoint,
     changerate: u64,
 }
 
-impl<M: Wallpaper + Screensaver> Bliss<M> {
-    pub fn new(manager: M, store: Store, endpoint: CollectionEndpoint) -> Self {
+impl Bliss {
+    pub fn new(manager: Box<dyn WallpaperAndScreensaver>, store: Store, endpoint: CollectionEndpoint) -> Self {
         Self { manager, store, endpoint, changerate: 5 }
     }
 
@@ -69,10 +69,10 @@ impl<M: Wallpaper + Screensaver> Bliss<M> {
         let mut photo_iter = self.init_photo_iter();
         let mut wallpaper_iter = self.store.iter_wallpapers().unwrap();
         loop {
-            if let None = self.fetch_new_wallpaper(&client, &mut photo_iter) {
+            if self.fetch_new_wallpaper(&client, &mut photo_iter).is_none() {
                 photo_iter = self.init_photo_iter();
             }
-            if let None = self.change_wallpaper(&mut wallpaper_iter) {
+            if self.change_wallpaper(&mut wallpaper_iter).is_none() {
                 wallpaper_iter = self.store.iter_wallpapers().unwrap();
             }
             std::thread::sleep(sleep_duration);
