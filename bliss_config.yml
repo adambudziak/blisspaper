@@ -1,3 +1,4 @@
-changerate: 300
+changerate: 5
 collections:
   - 1053828
+capacity: 100

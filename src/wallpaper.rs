@@ -14,7 +14,7 @@ pub mod gnome {
 
     impl Wallpaper for Manager {
         fn set_wallpaper(&self, path: &str) -> Result<(), ()> {
-            let output = Command::new("gsettings")
+            let _output = Command::new("gsettings")
                 .args(&["set", "org.gnome.desktop.background", "picture-uri"])
                 .arg(path)
                 .output()
@@ -25,7 +25,7 @@ pub mod gnome {
 
     impl Screensaver for Manager {
         fn set_screensaver(&self, path: &str) -> Result<(), ()> {
-            let output = Command::new("gsettings")
+            let _output = Command::new("gsettings")
                 .args(&["set", "org.gnome.desktop.screensaver", "picture-uri"])
                 .arg(path)
                 .output()
@@ -43,7 +43,7 @@ pub mod i3 {
 
     impl Wallpaper for Manager {
         fn set_wallpaper(&self, path: &str) -> Result<(), ()> {
-            let output = Command::new("feh")
+            let _output = Command::new("feh")
                 .arg("--bg-fill")
                 .arg(path)
                 .output()
@@ -53,7 +53,7 @@ pub mod i3 {
     }
 
     impl Screensaver for Manager {
-        fn set_screensaver(&self, path: &str) -> Result<(), ()> {
+        fn set_screensaver(&self, _path: &str) -> Result<(), ()> {
             Ok(())
         }
     }
@@ -65,13 +65,13 @@ pub mod dummy {
     pub struct Manager;
 
     impl Wallpaper for Manager {
-        fn set_wallpaper(&self, path: &str) -> Result<(), ()> {
+        fn set_wallpaper(&self, _path: &str) -> Result<(), ()> {
             Ok(())
         }
     }
 
     impl Screensaver for Manager {
-        fn set_screensaver(&self, path: &str) -> Result<(), ()> {
+        fn set_screensaver(&self, _path: &str) -> Result<(), ()> {
             Ok(())
         }
     }
@@ -84,7 +84,7 @@ pub trait WallpaperAndScreensaver: Wallpaper + Screensaver {}
 impl<T> WallpaperAndScreensaver for T where T: Wallpaper + Screensaver {}
 
 pub fn detect_session() -> Box<dyn WallpaperAndScreensaver> {
-    let session = env!("DESKTOP_SESSION").to_string().to_lowercase();
+    let _session = env!("DESKTOP_SESSION").to_string().to_lowercase();
 
     match env!("DESKTOP_SESSION") {
         "i3" => {

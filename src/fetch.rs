@@ -1,5 +1,5 @@
-use log::error;
-use reqwest::{Response, Url};
+
+
 
 pub mod unsplash {
     use reqwest::Url;

@@ -1,10 +1,10 @@
 use blisspaper::fetch::unsplash;
-use blisspaper::store::{Store, StoreError};
-use blisspaper::{wallpaper, ApiKeys};
+use blisspaper::store::{Store};
+use blisspaper::{ApiKeys};
 use blisspaper::bliss::Bliss;
 use flexi_logger::LogSpecification;
 use log::{info, LevelFilter};
-use blisspaper::wallpaper::{Wallpaper, Screensaver, detect_session};
+use blisspaper::wallpaper::{detect_session};
 use blisspaper::config::Config;
 
 fn main() -> reqwest::Result<()> {
