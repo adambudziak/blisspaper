@@ -1,9 +1,9 @@
+use log::{error, info, warn};
 use std::fs::{read_dir, DirEntry};
-use log::{info, warn, error};
 
-use crate::wallpaper::{Screensaver, Wallpaper, WallpaperAndScreensaver};
+use crate::fetch::unsplash::{CollectionEndpoint, PhotoSource};
 use crate::store::{Store, StoreError};
-use crate::fetch::unsplash::{PhotoSource, CollectionEndpoint};
+use crate::wallpaper::{Screensaver, Wallpaper, WallpaperAndScreensaver};
 use reqwest::Url;
 
 pub struct Bliss {
@@ -14,32 +14,44 @@ pub struct Bliss {
 }
 
 impl Bliss {
-    pub fn new(manager: Box<dyn WallpaperAndScreensaver>, store: Store, endpoint: CollectionEndpoint) -> Self {
-        Self { manager, store, endpoint, changerate: 5 }
+    pub fn new(
+        manager: Box<dyn WallpaperAndScreensaver>,
+        store: Store,
+        endpoint: CollectionEndpoint,
+    ) -> Self {
+        Self {
+            manager,
+            store,
+            endpoint,
+            changerate: 5,
+        }
     }
 
-    pub fn fetch_new_wallpaper(&self,
-                               client: &reqwest::Client,
-                               photo_iter: &mut impl Iterator<Item=Url>)
-    -> Option<()>
-    {
+    pub fn fetch_new_wallpaper(
+        &self,
+        client: &reqwest::Client,
+        photo_iter: &mut impl Iterator<Item = Url>,
+    ) -> Option<()> {
         match photo_iter.next() {
             Some(photo_url) => {
                 info!("Fetching next wallpaper: {}", photo_url);
                 let mut response = client.get(photo_url.as_str()).send().unwrap();
                 if let Err(e) = self.store.save_wallpaper(&mut response) {
-                    warn!("Couldn't save the wallpaper from {} in the store. Reason: {:?}", photo_url, e)
+                    warn!(
+                        "Couldn't save the wallpaper from {} in the store. Reason: {:?}",
+                        photo_url, e
+                    )
                 }
                 Some(())
-            },
+            }
             None => None,
         }
     }
 
-    pub fn change_wallpaper(&self,
-                            wallpaper_iter: &mut impl Iterator<Item=std::io::Result<DirEntry>>)
-    -> Option<()>
-    {
+    pub fn change_wallpaper(
+        &self,
+        wallpaper_iter: &mut impl Iterator<Item = std::io::Result<DirEntry>>,
+    ) -> Option<()> {
         match wallpaper_iter.next() {
             Some(Err(e)) => {
                 error!("Couldn't get the wallpaper from the store, reason: {}", e);
@@ -52,7 +64,7 @@ impl Bliss {
                 self.manager.set_screensaver(&path);
                 Some(())
             }
-            None => None
+            None => None,
         }
     }
 

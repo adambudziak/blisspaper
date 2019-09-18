@@ -1,5 +1,5 @@
-use reqwest::{Url, Response};
 use log::error;
+use reqwest::{Response, Url};
 
 pub mod unsplash {
     use reqwest::Url;
@@ -30,10 +30,12 @@ pub mod unsplash {
     }
 
     impl CollectionEndpoint {
-
         pub fn new(collection_id: u128) -> Self {
-            let url = Url::parse(&format!("{}/{}/photos/", COLLECTIONS_BASE_URL, collection_id))
-                .unwrap();
+            let url = Url::parse(&format!(
+                "{}/{}/photos/",
+                COLLECTIONS_BASE_URL, collection_id
+            ))
+            .unwrap();
             Self {
                 url,
                 client_id: None,
@@ -83,7 +85,7 @@ pub mod unsplash {
             let current_page = self.current_page;
             PagesIterator {
                 endpoint: self,
-                current_page
+                current_page,
             }
         }
     }
@@ -99,8 +101,12 @@ pub mod unsplash {
                 // TODO error handling should be improved
                 Ok(photos) => {
                     self.endpoint.set_page(self.endpoint.current_page + 1);
-                    if photos.len() == 0 { None } else { Some(photos) }
-                },
+                    if photos.len() == 0 {
+                        None
+                    } else {
+                        Some(photos)
+                    }
+                }
                 Err(e) => {
                     error!("Failed to fetch next page, reason: {}", e);
                     None
@@ -126,7 +132,6 @@ pub mod unsplash {
         }
     }
 
-
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -134,10 +139,10 @@ pub mod unsplash {
         #[test]
         fn test_collection_endpoint() {
             let endpoint = CollectionEndpoint::new(1234);
-            let expected_url = format!("{}/{}/photos/", COLLECTIONS_BASE_URL, 1234);
+            let expected_url = format!("{}/{}/photos/?page=1", COLLECTIONS_BASE_URL, 1234);
             assert_eq!(endpoint.get_url(), expected_url);
             let endpoint = endpoint.set_client_id("myid".to_owned());
-            let expected_url = format!("{}?client_id=myid", expected_url);
+            let expected_url = format!("{}&client_id=myid", expected_url);
             assert_eq!(endpoint.get_url(), expected_url);
         }
     }

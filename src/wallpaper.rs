@@ -77,6 +77,9 @@ pub mod dummy {
     }
 }
 
+/// Artificial trait to make boxing work.
+///
+/// For details, see https://github.com/rust-lang/rust/issues/32220.
 pub trait WallpaperAndScreensaver: Wallpaper + Screensaver {}
 impl<T> WallpaperAndScreensaver for T where T: Wallpaper + Screensaver {}
 
