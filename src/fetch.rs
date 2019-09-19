@@ -1,6 +1,3 @@
-
-
-
 pub mod unsplash {
     use reqwest::Url;
     use serde::Deserialize;
@@ -70,24 +67,18 @@ pub mod unsplash {
         pub fn fetch_photos(&self, client: &reqwest::Client) -> reqwest::Result<Photos> {
             client.get(self.get_url().as_str()).send()?.json()
         }
+
+        pub fn into_pages_iterator(self, client: reqwest::Client) -> PagesIterator {
+            PagesIterator {
+                endpoint: self,
+                client,
+            }
+        }
     }
 
     pub struct PagesIterator {
         endpoint: CollectionEndpoint,
-        current_page: usize,
-    }
-
-    impl IntoIterator for CollectionEndpoint {
-        type Item = Photos;
-        type IntoIter = PagesIterator;
-
-        fn into_iter(self) -> Self::IntoIter {
-            let current_page = self.current_page;
-            PagesIterator {
-                endpoint: self,
-                current_page,
-            }
-        }
+        client: reqwest::Client,
     }
 
     impl Iterator for PagesIterator {
@@ -95,8 +86,7 @@ pub mod unsplash {
 
         fn next(&mut self) -> Option<Self::Item> {
             info!("Fetching new page: {}", self.endpoint.get_url());
-            let client = reqwest::Client::new();
-            let photos = self.endpoint.fetch_photos(&client);
+            let photos = self.endpoint.fetch_photos(&self.client);
             match photos {
                 // TODO error handling should be improved
                 Ok(photos) => {

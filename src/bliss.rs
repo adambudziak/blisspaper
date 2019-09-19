@@ -62,17 +62,17 @@ impl Bliss {
         }
     }
 
-    fn init_photo_iter(&self) -> impl Iterator<Item = Url> + '_ {
-        PhotoSource::new(self.endpoint.clone().into_iter())
+    fn init_photo_iter(&self, client: &reqwest::Client) -> impl Iterator<Item = Url> + '_ {
+        PhotoSource::new(self.endpoint.clone().into_pages_iterator(client.clone()))
             .into_iter()
             .filter(move |url| !self.store.contains(&url))
     }
 
     pub fn run(&mut self) {
         let sleep_duration = std::time::Duration::from_secs(self.changerate);
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder().use_sys_proxy().build().unwrap();
 
-        let mut photo_iter = self.init_photo_iter();
+        let mut photo_iter = self.init_photo_iter(&client);
         let mut wallpaper_iter = self.store.sorted_wallpapers();
 
         let store_size = self.store.size() as i32;
@@ -98,7 +98,7 @@ impl Bliss {
             match photo_iter.next() {
                 Some(photo_url) => self.fetch_new_wallpaper(&client, photo_url),
                 None => {
-                    photo_iter = self.init_photo_iter();
+                    photo_iter = self.init_photo_iter(&client);
                 }
             }
             match wallpaper_iter.next() {
