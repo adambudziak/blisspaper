@@ -38,38 +38,26 @@ impl Bliss {
         }
     }
 
-    fn change_wallpaper(&self, next_wallpaper: std::io::Result<DirEntry>) {
-        match next_wallpaper {
-            Ok(entry) => {
-                let path = entry.path().to_str().unwrap().to_owned();
+    fn change_wallpaper(&self, next_wallpaper: DirEntry) {
+        let path = next_wallpaper.path().to_str().unwrap().to_owned();
 
-                // those are no-op for now
-                self.manager.set_wallpaper(&path).unwrap();
-                self.manager.set_screensaver(&path).unwrap();
-            }
-            Err(e) => {
-                error!("Couldn't get the wallpaper from the store, reason: {}", e);
-            }
-        }
+        // those are unwraps no-op for now
+        self.manager.set_wallpaper(&path).unwrap();
+        self.manager.set_screensaver(&path).unwrap();
     }
 
-    // TODO this is probably not that efficient but who cares atm
     fn remove_oldest_wallpaper(&self) {
-        let oldest = std::fs::read_dir(&self.store.path)
-            .expect("Couldn't read the store directory")
-            .next();
-        match oldest {
-            Some(Ok(dir_entry)) => {
-                let path = dir_entry.path().to_str().unwrap().to_owned();
+        match self.store.oldest_wallpaper() {
+            Some(de) => {
+                let path = de.path().to_str().unwrap().to_owned();
                 info!("Removing oldest wallpaper: {}", path);
                 if let Err(e) = std::fs::remove_file(&path) {
                     error!("Failed to remove wallpaper {}, reason: {:?}", path, e);
                 }
             }
-            Some(Err(e)) => error!("Got error while trying to remove a wallpaper: {}", e),
             None => panic!(
-                "Attempted to remove oldest wallpaper but no wallpapers were found.
-                This is a bug"
+                "Attempted to remove the oldest wallpaper while the store is empty.
+                 This is a bug"
             ),
         }
     }
@@ -85,7 +73,7 @@ impl Bliss {
         let client = reqwest::Client::new();
 
         let mut photo_iter = self.init_photo_iter();
-        let mut wallpaper_iter = self.store.iter_wallpapers().unwrap();
+        let mut wallpaper_iter = self.store.sorted_wallpapers();
 
         let store_size = self.store.size() as i32;
 
@@ -116,7 +104,7 @@ impl Bliss {
             match wallpaper_iter.next() {
                 Some(wallpaper) => self.change_wallpaper(wallpaper),
                 None => {
-                    wallpaper_iter = self.store.iter_wallpapers().unwrap();
+                    wallpaper_iter = self.store.sorted_wallpapers();
                 }
             }
             std::thread::sleep(sleep_duration);

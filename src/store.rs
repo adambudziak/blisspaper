@@ -1,4 +1,5 @@
-use std::fs::{read_dir, File, ReadDir};
+use itertools::Itertools;
+use std::fs::{read_dir, DirEntry, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
@@ -72,10 +73,22 @@ impl Store {
     }
 
     pub fn remove_wallpaper(&self, filepath: &str) {
-        std::fs::remove_file(filepath).unwrap();
+        std::fs::remove_file(self.path.join(filepath)).unwrap();
     }
 
-    pub fn iter_wallpapers(&self) -> std::io::Result<ReadDir> {
+    pub fn iter_wallpapers(&self) -> impl Iterator<Item = DirEntry> {
         read_dir(&self.path)
+            .expect("Failed to iter over store")
+            .filter_map(|de| de.ok())
+    }
+
+    pub fn sorted_wallpapers(&self) -> impl Iterator<Item = DirEntry> {
+        self.iter_wallpapers()
+            .sorted_by_key(|de| de.metadata().unwrap().modified().unwrap())
+    }
+
+    pub fn oldest_wallpaper(&self) -> Option<DirEntry> {
+        self.iter_wallpapers()
+            .min_by_key(|de| de.metadata().unwrap().modified().unwrap())
     }
 }
